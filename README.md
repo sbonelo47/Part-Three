@@ -289,3 +289,93 @@ namespace recipeApplication
         public string Description { get; set; }
     }
 }
+
+
+
+[Unit tests]
+using NUnit.Framework;
+using System;
+using System.IO;
+
+[TestFixture]
+public class RecipeTests
+{
+    [Test]
+    public void DisplayRecipe_DisplaysWithCorrectInformation()
+    {
+        // Arrange
+        var recipe = new Recipe
+        {
+            Name = "Test Recipe",
+            Ingredients = new List<Ingredient>
+            {
+                new Ingredient { Name = "Ingredient1", Quantity = 1, Unit = "unit", Calories = 100 },
+                new Ingredient { Name = "Ingredient2", Quantity = 2, Unit = "units", Calories = 50 }
+            },
+            Steps = new List<Step>
+            {
+                new Step { Description = "Step 1" },
+                new Step { Description = "Step 2" }
+            }
+        };
+
+        using (StringWriter sw = new StringWriter())
+        {
+            Console.SetOut(sw);
+
+            // Act
+            DisplayRecipe(recipe);
+            string expectedOutput = $"Recipe: {recipe.Name}{Environment.NewLine}" +
+                                    $"Ingredients:{Environment.NewLine}" +
+                                    $"Ingredient1: 1 unit - 100 Calories{Environment.NewLine}" +
+                                    $"Ingredient2: 2 units - 50 Calories{Environment.NewLine}" +
+                                    $"Steps:{Environment.NewLine}" +
+                                    $"Step 1{Environment.NewLine}" +
+                                    $"Step 2{Environment.NewLine}" +
+                                    $"Total Calories: 250{Environment.NewLine}";
+
+            // Assert
+            Assert.AreEqual(expectedOutput, sw.ToString());
+        }
+    }
+
+    [Test]
+    public void DisplayRecipe_WarningDisplayedWhenTotalCaloriesExceeds300()
+    {
+        // Arrange
+        var recipe = new Recipe
+        {
+            Name = "High Calorie Recipe",
+            Ingredients = new List<Ingredient>
+            {
+                new Ingredient { Name = "Ingredient1", Quantity = 2, Unit = "cups", Calories = 150 },
+                new Ingredient { Name = "Ingredient2", Quantity = 1, Unit = "tbsp", Calories = 200 }
+            },
+            Steps = new List<Step>
+            {
+                new Step { Description = "Step 1" },
+                new Step { Description = "Step 2" }
+            }
+        };
+
+        using (StringWriter sw = new StringWriter())
+        {
+            Console.SetOut(sw);
+
+            // Act
+            DisplayRecipe(recipe);
+            string expectedOutput = $"Recipe: {recipe.Name}{Environment.NewLine}" +
+                                    $"Ingredients:{Environment.NewLine}" +
+                                    $"Ingredient1: 2 cups - 150 Calories{Environment.NewLine}" +
+                                    $"Ingredient2: 1 tbsp - 200 Calories{Environment.NewLine}" +
+                                    $"Steps:{Environment.NewLine}" +
+                                    $"Step 1{Environment.NewLine}" +
+                                    $"Step 2{Environment.NewLine}" +
+                                    $"Total Calories: 350{Environment.NewLine}" +
+                                    $"Warning: This recipe exceeds 300 calories.{Environment.NewLine}";
+
+            // Assert
+            Assert.AreEqual(expectedOutput, sw.ToString());
+        }
+    }
+}
