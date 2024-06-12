@@ -1,0 +1,605 @@
+using System.Windows; // Namespace for WPF application functionalities.
+using interfaceRecipeApplication; // Namespace for WPF control elements.
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Controls;
+
+namespace RecipeApp
+{
+    public partial class MainWindow : Window
+    {
+        // Static list to store all the recipes.
+        public static List<Recipe> recipes = new List<Recipe>();
+
+        // Constructor to initialize the MainWindow components.
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+
+        // Event handler for creating a new recipe.
+        private void CreateRecipeButton_Click(object sender, RoutedEventArgs e)
+        {
+            string recipeName = Prompt("Enter the recipe name:"); // Prompt user for recipe name.
+            if (string.IsNullOrWhiteSpace(recipeName)) return; // Check if the name is valid.
+
+            Recipe recipe = new Recipe { Name = recipeName }; // Create a new recipe object.
+            recipes.Add(recipe); // Add the new recipe to the list.
+
+            AddIngredients(recipe); // Add ingredients to the recipe.
+            AddSteps(recipe); // Add steps to the recipe.
+        }
+
+        // Method to add ingredients to a recipe.
+        private void AddIngredients(Recipe recipe)
+        {
+            int numIngredients = int.Parse(Prompt("Enter the number of ingredients:")); // Prompt user for number of ingredients.
+            for (int i = 0; i < numIngredients; i++) // Loop through each ingredient.
+            {
+                string name = Prompt($"Enter the name of ingredient {i + 1}:"); // Prompt for ingredient name.
+                double quantity = double.Parse(Prompt($"Enter the quantity of {name}:")); // Prompt for ingredient quantity.
+                string unit = Prompt($"Enter the unit of {name}:"); // Prompt for ingredient unit.
+                double calories = double.Parse(Prompt($"Enter the calories of {name}:")); // Prompt for ingredient calories.
+                string foodGroup = Prompt($"Enter the food group of {name}:"); // Prompt for ingredient food group.
+
+                // Create a new ingredient object.
+                Ingredient ingredient = new Ingredient
+                {
+                    Name = name,
+                    Quantity = quantity,
+                    Unit = unit,
+                    Calories = calories,
+                    FoodGroup = foodGroup,
+                    OriginalQuantity = quantity,
+                    OriginalCalories = calories
+                };
+
+                recipe.Ingredients.Add(ingredient); // Add the ingredient to the recipe.
+            }
+        }
+
+        // Method to add steps to a recipe.
+        private void AddSteps(Recipe recipe)
+        {
+            int numSteps = int.Parse(Prompt("Enter the number of steps:")); // Prompt user for number of steps.
+            for (int i = 0; i < numSteps; i++) // Loop through each step.
+            {
+                string description = Prompt($"Enter the description of step {i + 1}:"); // Prompt for step description.
+                recipe.Steps.Add(new Step { Description = description }); // Add the step to the recipe.
+            }
+        }
+
+        // Event handler to display the list of recipes.
+        private void DisplayRecipeListButton_Click(object sender, RoutedEventArgs e)
+        {
+            var sortedRecipes = recipes.OrderBy(r => r.Name).ToList(); // Sort recipes alphabetically by name.
+            string recipeList = string.Join("\n", sortedRecipes.Select(r => r.Name)); // Create a string of recipe names.
+            string selectedRecipeName = Prompt($"Recipes:\n{recipeList}\n\nEnter the name of the recipe to display:"); // Prompt user to select a recipe.
+
+            Recipe selectedRecipe = recipes.FirstOrDefault(r => r.Name.Equals(selectedRecipeName, StringComparison.OrdinalIgnoreCase)); // Find the selected recipe.
+            if (selectedRecipe != null)
+            {
+                DisplayRecipe(selectedRecipe); // Display the selected recipe.
+            }
+        }
+
+        // Method to display a recipe's details.
+        private void DisplayRecipe(Recipe recipe)
+        {
+            string ingredients = string.Join("\n", recipe.Ingredients.Select(i => $"{i.Quantity} {i.Unit} {i.Name} ({i.Calories} calories)")); // Create a string of ingredients.
+            string steps = string.Join("\n", recipe.Steps.Select((s, index) => $"{index + 1}. {s.Description}")); // Create a string of steps.
+            string totalCalories = $"Total Calories: {recipe.TotalCalories()}"; // Calculate total calories.
+
+            // Check if total calories exceed 300 and create a warning message if they do.
+            string warning = recipe.TotalCalories() > 300 ? "Warning: Total calories exceed 300!" : string.Empty;
+
+            // Combine all details into a single string.
+            string recipeDetails = $"Recipe: {recipe.Name}\n\nIngredients:\n{ingredients}\n\nSteps:\n{steps}\n\n{totalCalories}\n{warning}";
+            OutputTextBlock.Text = recipeDetails; // Display the recipe details.
+        }
+
+        // Event handler to scale the ingredients of a recipe.
+        private void ScaleIngredientsButton_Click(object sender, RoutedEventArgs e)
+        {
+            string recipeName = Prompt("Enter the name of the recipe to scale:"); // Prompt user for recipe name.
+            Recipe recipe = recipes.FirstOrDefault(r => r.Name.Equals(recipeName, StringComparison.OrdinalIgnoreCase)); // Find the recipe.
+            if (recipe != null)
+            {
+                double scaleFactor = double.Parse(Prompt("Enter the scale factor (e.g., 0.5, 2, 3):")); // Prompt user for scale factor.
+                ScaleIngredients(recipe, scaleFactor); // Scale the ingredients.
+            }
+        }
+
+        // Method to scale the ingredients of a recipe.
+        private void ScaleIngredients(Recipe recipe, double scaleFactor)
+        {
+            foreach (var ingredient in recipe.Ingredients) // Loop through each ingredient.
+            {
+                ingredient.Quantity *= scaleFactor; // Scale the quantity.
+                ingredient.Calories *= scaleFactor; // Scale the calories.
+            }
+            OutputTextBlock.Text = $"Scaled ingredients for {recipe.Name} by a factor of {scaleFactor}."; // Display scaling confirmation.
+        }
+
+        // Event handler to reset the ingredients of a recipe to their original values.
+        private void ResetIngredientsButton_Click(object sender, RoutedEventArgs e)
+        {
+            string recipeName = Prompt("Enter the name of the recipe to reset:"); // Prompt user for recipe name.
+            Recipe recipe = recipes.FirstOrDefault(r => r.Name.Equals(recipeName, StringComparison.OrdinalIgnoreCase)); // Find the recipe.
+            if (recipe != null)
+            {
+                foreach (var ingredient in recipe.Ingredients) // Loop through each ingredient.
+                {
+                    ingredient.Quantity = ingredient.OriginalQuantity; // Reset quantity to original value.
+                    ingredient.Calories = ingredient.OriginalCalories; // Reset calories to original value.
+                }
+                OutputTextBlock.Text = $"Reset ingredients for {recipe.Name}."; // Display reset confirmation.
+            }
+        }
+
+        // Event handler to filter recipes by an ingredient.
+        private void FilterByIngredientButton_Click(object sender, RoutedEventArgs e)
+        {
+            string ingredientName = Prompt("Enter the name of the ingredient to filter recipes by:"); // Prompt user for ingredient name.
+            var filteredRecipes = recipes.Where(r => r.Ingredients.Any(i => i.Name.Equals(ingredientName, StringComparison.OrdinalIgnoreCase))).OrderBy(r => r.Name).ToList(); // Find recipes containing the ingredient.
+
+            if (filteredRecipes.Any()) // Check if any recipes were found.
+            {
+                string recipeList = string.Join("\n", filteredRecipes.Select(r => r.Name)); // Create a string of recipe names.
+                OutputTextBlock.Text = $"Recipes containing {ingredientName}:\n{recipeList}"; // Display the filtered recipes.
+            }
+            else
+            {
+                OutputTextBlock.Text = $"No recipes found containing the ingredient: {ingredientName}"; // Display no recipes found message.
+            }
+        }
+
+        // Event handler to clear all recipes.
+        private void ClearRecipeButton_Click(object sender, RoutedEventArgs e)
+        {
+            recipes.Clear(); // Clear the recipes list.
+            OutputTextBlock.Text = "All recipes have been cleared."; // Display clear confirmation.
+        }
+
+        // Event handler to exit the application.
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown(); // Shutdown the application.
+        }
+
+        // Helper method to display a prompt to the user and get input.
+        private string Prompt(string message)
+        {
+            return Microsoft.VisualBasic.Interaction.InputBox(message, "Input", ""); // Display an input box with the message.
+        }
+    }
+}
+
+
+WPF code.
+
+<Window x:Class="RecipeApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Recipe Application" Height="510" Width="860">
+    <Grid>
+        <!-- Define the row structure of the Grid. The Grid has two rows. -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="214*"/>
+            <RowDefinition Height="205*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Set the background image of the Grid. -->
+        <Grid.Background>
+            <ImageBrush ImageSource="/istock-588595864-1536x1025.jpg"/>
+        </Grid.Background>
+
+        <!-- Define the column structure of the Grid. The Grid has four columns. -->
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="245*"/>
+            <ColumnDefinition Width="18*"/>
+            <ColumnDefinition Width="203*"/>
+            <ColumnDefinition Width="60*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- StackPanel to contain the buttons and the title. This spans the first two columns and both rows of the Grid. -->
+        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.RowSpan="2">
+            <!-- Title of the application. -->
+            <TextBlock Text="Recipe Applicatiion" FontSize="17" Margin="10" Foreground="White" FontFamily="Arial Black"/>
+
+            <!-- Button to create a new recipe. -->
+            <Button Name="CreateRecipeButton" Content="Create Recipe" Click="CreateRecipeButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to display the list of recipes. -->
+            <Button Name="DisplayRecipeListButton" Content="Display Recipe List" Click="DisplayRecipeListButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to scale the ingredients of a recipe. -->
+            <Button Name="ScaleIngredientsButton" Content="Scale Ingredients" Click="ScaleIngredientsButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to reset the ingredients of a recipe to their original values. -->
+            <Button Name="ResetIngredientsButton" Content="Reset Ingredients" Click="ResetIngredientsButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to filter recipes by an ingredient. -->
+            <Button Name="FilterByIngredientButton" Content="Filter By Ingredient" Click="FilterByIngredientButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to clear all recipes. -->
+            <Button Name="ClearRecipeButton" Content="Clear" Click="ClearRecipeButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+
+            <!-- Button to exit the application. -->
+            <Button Name="ExitButton" Content="Exit" Click="ExitButton_Click" Margin="10" Background="WhiteSmoke" Width="470" Height="44"/>
+        </StackPanel>
+
+        <!-- TextBlock to display output messages. This spans the last two columns and both rows of the Grid. -->
+        <TextBlock Name="OutputTextBlock" TextWrapping="Wrap" Margin="0,49,20,20" Grid.Column="2" Grid.ColumnSpan="2" Foreground="Black" FontSize="24" Grid.RowSpan="2">
+            <TextBlock.Background>
+                <ImageBrush ImageSource="/AdobeStock_59223799.jpeg"/>
+            </TextBlock.Background>
+        </TextBlock>
+    </Grid>
+</Window>
+
+
+Unit tests
+using interfaceRecipeApplication;
+
+namespace RecipeApp.Tests
+{
+    public class RecipeManagerTests
+    {
+        private RecipeManager _recipeManager;
+
+        [SetUp]
+        public void Setup()
+        {
+            _recipeManager = new RecipeManager();
+        }
+
+        [Test]
+        public void AddRecipe_ShouldAddRecipeToList()
+        {
+            // Arrange
+            var recipeName = "Pancakes";
+            var ingredients = new List<Ingredient>
+            {
+                new Ingredient { Name = "Flour", Quantity = 200, Unit = "g", Calories = 400, OriginalQuantity = 200, OriginalCalories = 400 }
+            };
+            var steps = new List<Step>
+            {
+                new Step { Description = "Mix ingredients" }
+            };
+
+            // Act
+            _recipeManager.AddRecipe(recipeName, ingredients, steps);
+
+            // Assert
+            Assert.AreEqual(1, _recipeManager.Recipes.Count);
+            Assert.AreEqual(recipeName, _recipeManager.Recipes[0].Name);
+        }
+
+        [Test]
+        public void ScaleIngredients_ShouldScaleIngredientsByFactor()
+        {
+            // Arrange
+            var recipe = new Recipe
+            {
+                Name = "Pancakes",
+                Ingredients = new List<Ingredient>
+                {
+                    new Ingredient { Name = "Flour", Quantity = 200, Calories = 400, OriginalQuantity = 200, OriginalCalories = 400 }
+                }
+            };
+            _recipeManager.Recipes.Add(recipe);
+
+            // Act
+            _recipeManager.ScaleIngredients(recipe, 2);
+
+            // Assert
+            Assert.AreEqual(400, recipe.Ingredients[0].Quantity);
+            Assert.AreEqual(800, recipe.Ingredients[0].Calories);
+        }
+
+        [Test]
+        public void ResetIngredients_ShouldResetIngredientsToOriginalValues()
+        {
+            // Arrange
+            var recipe = new Recipe
+            {
+                Name = "Pancakes",
+                Ingredients = new List<Ingredient>
+                {
+                    new Ingredient { Name = "Flour", Quantity = 400, Calories = 800, OriginalQuantity = 200, OriginalCalories = 400 }
+                }
+            };
+            _recipeManager.Recipes.Add(recipe);
+
+            // Act
+            _recipeManager.ResetIngredients(recipe);
+
+            // Assert
+            Assert.AreEqual(200, recipe.Ingredients[0].Quantity);
+            Assert.AreEqual(400, recipe.Ingredients[0].Calories);
+        }
+
+        [Test]
+        public void FilterRecipesByIngredient_ShouldReturnFilteredRecipes()
+        {
+            // Arrange
+            var recipe1 = new Recipe
+            {
+                Name = "Pancakes",
+                Ingredients = new List<Ingredient>
+                {
+                    new Ingredient { Name = "Flour", Quantity = 200, Calories = 400 }
+                }
+            };
+            var recipe2 = new Recipe
+            {
+                Name = "Omelette",
+                Ingredients = new List<Ingredient>
+                {
+                    new Ingredient { Name = "Egg", Quantity = 2, Calories = 150 }
+                }
+            };
+            _recipeManager.Recipes.Add(recipe1);
+            _recipeManager.Recipes.Add(recipe2);
+
+            // Act
+            var filteredRecipes = _recipeManager.FilterRecipesByIngredient("Egg");
+
+            // Assert
+            Assert.AreEqual(1, filteredRecipes.Count);
+            Assert.AreEqual("Omelette", filteredRecipes[0].Name);
+        }
+
+        [Test]
+        public void ClearRecipes_ShouldClearAllRecipes()
+        {
+            // Arrange
+            _recipeManager.Recipes.Add(new Recipe { Name = "Pancakes" });
+
+            // Act
+            _recipeManager.ClearRecipes();
+
+            // Assert
+            Assert.AreEqual(0, _recipeManager.Recipes.Count);
+        }
+    }
+}
+
+using NUnit.Framework;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace interfaceRecipeApplication.Tests
+{
+    public class Ingredient
+    {
+        public string Name { get; set; }
+        public double Calories { get; set; }
+    }
+
+    public class Step
+    {
+        public string Description { get; set; }
+    }
+
+    [TestFixture]
+    public class RecipeTests
+    {
+        [Test]
+        public void TotalCalories_NoIngredients_ReturnsZero()
+        {
+            // Arrange
+            var recipe = new Recipe();
+
+            // Act
+            var totalCalories = recipe.TotalCalories();
+
+            // Assert
+            Assert.AreEqual(0, totalCalories);
+        }
+
+        [Test]
+        public void TotalCalories_SingleIngredient_ReturnsIngredientCalories()
+        {
+            // Arrange
+            var recipe = new Recipe();
+            recipe.Ingredients.Add(new Ingredient { Name = "Sugar", Calories = 100 });
+
+            // Act
+            var totalCalories = recipe.TotalCalories();
+
+            // Assert
+            Assert.AreEqual(100, totalCalories);
+        }
+
+        [Test]
+        public void TotalCalories_MultipleIngredients_ReturnsSumOfCalories()
+        {
+            // Arrange
+            var recipe = new Recipe();
+            recipe.Ingredients.Add(new Ingredient { Name = "Sugar", Calories = 100 });
+            recipe.Ingredients.Add(new Ingredient { Name = "Flour", Calories = 200 });
+
+            // Act
+            var totalCalories = recipe.TotalCalories();
+
+            // Assert
+            Assert.AreEqual(300, totalCalories);
+        }
+
+        [Test]
+        public void TotalCalories_IngredientsWithZeroCalories_ReturnsSumOfCalories()
+        {
+            // Arrange
+            var recipe = new Recipe();
+            recipe.Ingredients.Add(new Ingredient { Name = "Water", Calories = 0 });
+            recipe.Ingredients.Add(new Ingredient { Name = "Salt", Calories = 0 });
+            recipe.Ingredients.Add(new Ingredient { Name = "Sugar", Calories = 100 });
+
+            // Act
+            var totalCalories = recipe.TotalCalories();
+
+            // Assert
+            Assert.AreEqual(100, totalCalories);
+        }
+    }
+}
+
+using NUnit.Framework;
+
+namespace interfaceRecipeApplication.Tests
+{
+    [TestFixture]
+    public class StepTests
+    {
+        [Test]
+        public void Step_DescriptionProperty_GetSet()
+        {
+            // Arrange
+            var step = new Step();
+            var description = "Mix all ingredients together.";
+
+            // Act
+            step.Description = description;
+
+            // Assert
+            Assert.AreEqual(description, step.Description);
+        }
+
+        [Test]
+        public void Step_EmptyDescription_DefaultState()
+        {
+            // Arrange
+            var step = new Step();
+
+            // Act
+            var description = step.Description;
+
+            // Assert
+            Assert.IsNull(description);
+        }
+
+        [Test]
+        public void Step_DescriptionProperty_Null()
+        {
+            // Arrange
+            var step = new Step();
+            string description = null;
+
+            // Act
+            step.Description = description;
+
+            // Assert
+            Assert.IsNull(step.Description);
+        }
+    }
+}
+
+using NUnit.Framework;
+
+namespace interfaceRecipeApplication.Tests
+{
+    [TestFixture]
+    public class IngredientTests
+    {
+        [Test]
+        public void Ingredient_NameProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var name = "Sugar";
+
+            // Act
+            ingredient.Name = name;
+
+            // Assert
+            Assert.AreEqual(name, ingredient.Name);
+        }
+
+        [Test]
+        public void Ingredient_QuantityProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var quantity = 1.5;
+
+            // Act
+            ingredient.Quantity = quantity;
+
+            // Assert
+            Assert.AreEqual(quantity, ingredient.Quantity);
+        }
+
+        [Test]
+        public void Ingredient_UnitProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var unit = "cups";
+
+            // Act
+            ingredient.Unit = unit;
+
+            // Assert
+            Assert.AreEqual(unit, ingredient.Unit);
+        }
+
+        [Test]
+        public void Ingredient_CaloriesProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var calories = 200;
+
+            // Act
+            ingredient.Calories = calories;
+
+            // Assert
+            Assert.AreEqual(calories, ingredient.Calories);
+        }
+
+        [Test]
+        public void Ingredient_FoodGroupProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var foodGroup = "Dairy";
+
+            // Act
+            ingredient.FoodGroup = foodGroup;
+
+            // Assert
+            Assert.AreEqual(foodGroup, ingredient.FoodGroup);
+        }
+
+        [Test]
+        public void Ingredient_OriginalQuantityProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var originalQuantity = 2.0;
+
+            // Act
+            ingredient.OriginalQuantity = originalQuantity;
+
+            // Assert
+            Assert.AreEqual(originalQuantity, ingredient.OriginalQuantity);
+        }
+
+        [Test]
+        public void Ingredient_OriginalCaloriesProperty_GetSet()
+        {
+            // Arrange
+            var ingredient = new Ingredient();
+            var originalCalories = 150;
+
+            // Act
+            ingredient.OriginalCalories = originalCalories;
+
+            // Assert
+            Assert.AreEqual(originalCalories, ingredient.OriginalCalories);
+        }
+    }
+}
